@@ -12,10 +12,7 @@
 
 ActiveRecord::Schema.define(version: 20170802115854) do
 
-  # These are extensions that must be enabled in order to support this database
-  enable_extension "plpgsql"
-
-  create_table "hearts", id: :serial, force: :cascade do |t|
+  create_table "hearts", id: :integer, force: :cascade, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8" do |t|
     t.string "name"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -42,7 +39,7 @@ ActiveRecord::Schema.define(version: 20170802115854) do
     t.index ["id"], name: "index_hearts_on_id"
   end
 
-  create_table "hyperloop_connections", force: :cascade do |t|
+  create_table "hyperloop_connections", force: :cascade, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8" do |t|
     t.string "channel"
     t.string "session"
     t.datetime "created_at"
@@ -50,12 +47,12 @@ ActiveRecord::Schema.define(version: 20170802115854) do
     t.datetime "refresh_at"
   end
 
-  create_table "hyperloop_queued_messages", force: :cascade do |t|
+  create_table "hyperloop_queued_messages", force: :cascade, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8" do |t|
     t.text "data"
     t.integer "connection_id"
   end
 
-  create_table "members", force: :cascade do |t|
+  create_table "members", force: :cascade, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8" do |t|
     t.string "first_name"
     t.string "last_name"
     t.datetime "created_at", null: false
@@ -68,8 +65,8 @@ ActiveRecord::Schema.define(version: 20170802115854) do
     t.integer "sign_in_count", default: 0, null: false
     t.datetime "current_sign_in_at"
     t.datetime "last_sign_in_at"
-    t.inet "current_sign_in_ip"
-    t.inet "last_sign_in_ip"
+    t.string "current_sign_in_ip"
+    t.string "last_sign_in_ip"
     t.index ["email"], name: "index_members_on_email", unique: true
     t.index ["reset_password_token"], name: "index_members_on_reset_password_token", unique: true
   end
