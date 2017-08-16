@@ -24,6 +24,22 @@ class Autoloader
   end
   self.loading = []
 
+  def self.reloading=(a)
+    @@reloading = a
+  end
+  def self.reload?
+    @@reloading
+  end
+  self.reloading = false
+
+  def self.remote_loading=(a)
+    @@remote_loading = a
+  end
+  def self.remote_loading?
+    @@remote_loading
+  end
+  self.remote_loading = false
+
   # def runtime_compile_and_run(load_path, ruby_code)
   # Pseudocode
   #   compiler = Opal::Compiler.new(ruby_code)
@@ -34,14 +50,8 @@ class Autoloader
   #   Opal.require(load_path)
   # end
 
-  def self.autoload_module!(into, const_name, qualified_name, path_suffix)
-    # use this method for loading from server
-    puts 'autoloader: loading from server not implemented yet'
-    return nil # unless base_path = autoloadable_module?(path_suffix)
-    # mod = Module.new
-    # into.const_set const_name, mod
-    # autoloaded_constants << qualified_name unless autoload_once_paths.include?(base_path)
-    # mod
+  def self.remote_load_module(into, const_name, qualified_name, path_suffix)
+    raise
   end
 
   def self.const_missing(const_name, mod)
@@ -60,10 +70,6 @@ class Autoloader
     end
   end
 
-  def self.load?
-    false # true for reloading/loading instead of require
-  end
-
   def self.load_missing_constant(from_mod, const_name)
     # see active_support/dependencies.rb in case of reloading on how to handle
     puts "autoloader: load_missing_constant(from_mod: #{from_mod}, const_name: #{const_name})"
@@ -80,16 +86,23 @@ class Autoloader
         raise LoadError, "Unable to autoload constant #{qualified_name}, expected #{module_path} to define it" unless from_mod.const_defined?(const_name, false)
         return from_mod.const_get(const_name)
       end
-    elsif mod = autoload_module!(from_mod, const_name, qualified_name, qualified_path)
+    elsif remote_loading? && mod = remote_load_module(from_mod, const_name, qualified_name, qualified_path)
       return mod
     elsif (parent = from_mod.parent) && parent != from_mod &&
           ! from_mod.parents.any? { |p| p.const_defined?(const_name, false) }
       begin
         return parent.const_missing(const_name)
       rescue NameError => e
-        raise unless e.missing_name?(qualified_name_for(parent, const_name))
+        raise unless missing_name?(e, qualified_name_for(parent, const_name))
       end
     end
+  end
+
+  def self.missing_name?(e, name)
+    mn = if /undefined/ !~ e.message
+           $1 if /((::)?([A-Z]\w*)(::[A-Z]\w*)*)$/ =~ e.message
+         end
+    mn == name
   end
 
   # Returns the constant path for the provided parent and constant name.
@@ -113,7 +126,7 @@ class Autoloader
     loading << module_path
 
     begin
-      if load?
+      if reload?
         # use this code path for reloading
       else
         puts "autoloader: require_or_load: require '#{module_path}'"
@@ -137,7 +150,7 @@ class Autoloader
     puts "autoloader: search_for_module(path: #{path})"
     # just for debugging
     opcheck = `Opal.modules['#{path}']`
-    puts "autoloader: search_for_module: Opal internal check: #{opcheck ? true : false}"
+    puts "autoloader: search_for_module: Opal internal check for #{path}: #{opcheck ? true : false}"
     return path if `Opal.modules['#{path}']`
     nil # Gee, I sure wish we had first_match ;-)
   end
