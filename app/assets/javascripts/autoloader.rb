@@ -36,7 +36,7 @@ class Autoloader
 
   def self.autoload_module!(into, const_name, qualified_name, path_suffix)
     # use this method for loading from server
-    puts 'autoloading from server not implemented yet'
+    puts 'autoloader: loading from server not implemented yet'
     return nil # unless base_path = autoloadable_module?(path_suffix)
     # mod = Module.new
     # into.const_set const_name, mod
@@ -44,10 +44,11 @@ class Autoloader
     # mod
   end
 
-  def self.const_missing(const_name)
-    puts 'autoloader_const_missing ' + const_name
+  def self.const_missing(const_name, mod)
+    puts "autoloader: const_missing(const_name: #{const_name}, module: #{mod.name})"
     # name.nil? is testing for anonymous
-    from_mod = name.nil? ? guess_for_anonymous(const_name) : self
+    from_mod = mod.name.nil? ? guess_for_anonymous(const_name) : mod
+    puts "autoloader: const_missing: from_mod: #{from_mod}"
     load_missing_constant(from_mod, const_name)
   end
 
@@ -64,12 +65,13 @@ class Autoloader
   end
 
   def self.load_missing_constant(from_mod, const_name)
-    # see active_support/dependencie.rb in case of reloading on how to handle
+    # see active_support/dependencies.rb in case of reloading on how to handle
+    puts "autoloader: load_missing_constant(from_mod: #{from_mod}, const_name: #{const_name})"
     qualified_name = qualified_name_for(from_mod, const_name)
     qualified_path = underscore(qualified_name)
 
     module_path = search_for_module(qualified_path)
-
+    puts "autoloader: load_missing_constant: q_name: #{qualified_name}, q_path: #{qualified_path}, module_path: #{module_path}"
     if module_path
       if loading.include?(module_path)
         raise "Circular dependency detected while autoloading constant #{qualified_name}"
@@ -92,6 +94,7 @@ class Autoloader
 
   # Returns the constant path for the provided parent and constant name.
   def self.qualified_name_for(mod, name)
+    puts "autoloader: qualified_name_for(mod: #{mod}, name: #{name}"
     mod_name = to_constant_name(mod)
     mod_name == 'Object' ? name.to_s : "#{mod_name}::#{name}"
   end
@@ -113,9 +116,11 @@ class Autoloader
       if load?
         # use this code path for reloading
       else
+        puts "autoloader: require_or_load: require '#{module_path}'"
         result = require module_path
       end
     rescue Exception
+      puts "autoloader: require_or_load: loading #{module_path} failed"
       loaded.delete module_path
       raise
     ensure
@@ -129,7 +134,11 @@ class Autoloader
   end
 
   def self.search_for_module(path)
-    return path if Opal.modules[path]
+    puts "autoloader: search_for_module(path: #{path})"
+    # just for debugging
+    opcheck = `Opal.modules['#{path}']`
+    puts "autoloader: search_for_module: Opal internal check: #{opcheck ? true : false}"
+    return path if `Opal.modules['#{path}']`
     nil # Gee, I sure wish we had first_match ;-)
   end
 
@@ -160,7 +169,7 @@ class Object
       # original code may also be overloaded by reactrb, for example
       _autoloader_original_const_missing(const_name)
     rescue StandardError => e
-      Autoloader.const_missing(const_name) || raise(e)
+      Autoloader.const_missing(const_name, self) || raise(e)
     end
   end
 end

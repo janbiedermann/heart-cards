@@ -31,11 +31,11 @@ require 'hyper-operation'
 require 'reactrb/auto-import'
 # require 'hyper-router/react-router-source'
 require 'hyper-router'
+require 'hyper-console'
 
 require 'autoloader'
 
 require 'components'
 Opal.load('components')
 
-
-
+console
