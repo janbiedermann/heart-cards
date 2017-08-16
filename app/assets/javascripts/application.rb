@@ -39,3 +39,7 @@ require 'components'
 Opal.load('components')
 
 console
+
+require 'test_one'
+require 'test_two'
+require 'test_three'

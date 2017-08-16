@@ -27,9 +27,6 @@ class Autoloader
   def self.reloading=(a)
     @@reloading = a
   end
-  def self.reload?
-    @@reloading
-  end
   self.reloading = false
 
   def self.remote_loading=(a)
@@ -39,6 +36,10 @@ class Autoloader
     @@remote_loading
   end
   self.remote_loading = false
+
+  def self.reload?
+    @@remote_loading && @@reloading
+  end
 
   # def runtime_compile_and_run(load_path, ruby_code)
   # Pseudocode
@@ -50,7 +51,29 @@ class Autoloader
   #   Opal.require(load_path)
   # end
 
-  def self.remote_load_module(into, const_name, qualified_name, path_suffix)
+  def self.autoload_module!(from_mod, const_name, qualified_name, qualified_path)
+    puts "autoloader: remote_load_module(#{const_name}, #{qualified_name}, #{qualified_path})"
+    compiled_ruby_as_js = remote_load_module(const_name, qualified_name, qualified_path)
+
+    # TODO:
+    # - integrate returned javascript into opal runtime structures
+    #   just as the opal compiler would have done it
+
+    # to keep track of module and require
+    require_or_load(from_mod, qualified_path)
+    return from_mod.const_get(const_name)
+
+    # code from rails activesupport dependencies:
+    # unless base_path = autoloadable_module?(path_suffix)
+    # mod = Module.new
+    # into.const_set const_name, mod
+    # autoloaded_constants << qualified_name unless autoload_once_paths.include?(base_path)
+    # mod
+  end
+
+  def self.remote_load_module(const_name, qualified_name, qualified_path)
+    # create a new class, inherit from Autoloader and overwrite this method with your custom remote loader
+    # return opal compiled ruby code, the javascript
     raise
   end
 
@@ -82,11 +105,11 @@ class Autoloader
       if loading.include?(module_path)
         raise "Circular dependency detected while autoloading constant #{qualified_name}"
       else
-        require_or_load(module_path)
+        require_or_load(from_mod, module_path)
         raise LoadError, "Unable to autoload constant #{qualified_name}, expected #{module_path} to define it" unless from_mod.const_defined?(const_name, false)
         return from_mod.const_get(const_name)
       end
-    elsif remote_loading? && mod = remote_load_module(from_mod, const_name, qualified_name, qualified_path)
+    elsif remote_loading? && mod = autoload_module!(from_mod, const_name, qualified_name, qualified_path)
       return mod
     elsif (parent = from_mod.parent) && parent != from_mod &&
           ! from_mod.parents.any? { |p| p.const_defined?(const_name, false) }
@@ -107,12 +130,12 @@ class Autoloader
 
   # Returns the constant path for the provided parent and constant name.
   def self.qualified_name_for(mod, name)
-    puts "autoloader: qualified_name_for(mod: #{mod}, name: #{name}"
+    puts "autoloader: qualified_name_for(mod: #{mod}, name: #{name})"
     mod_name = to_constant_name(mod)
     mod_name == 'Object' ? name.to_s : "#{mod_name}::#{name}"
   end
 
-  def self.require_or_load(module_path, const_path = nil)
+  def self.require_or_load(from_mod, module_path)
     return if loaded.include?(module_path)
 
     # omit locking for now, introduces twice the code
@@ -127,6 +150,7 @@ class Autoloader
 
     begin
       if reload?
+        puts "autoloader: reloading #{module_path}"
         # use this code path for reloading
       else
         puts "autoloader: require_or_load: require '#{module_path}'"
@@ -149,9 +173,12 @@ class Autoloader
   def self.search_for_module(path)
     puts "autoloader: search_for_module(path: #{path})"
     # just for debugging
-    opcheck = `Opal.modules['#{path}']`
-    puts "autoloader: search_for_module: Opal internal check for #{path}: #{opcheck ? true : false}"
-    return path if `Opal.modules['#{path}']`
+    # oh my! imagine Bart Simpson, writing on the board:
+    # "javascript is not ruby, javascript is not ruby, javascript is not ruby, ..."
+    # then running home, starting irb, on the fly developing a chat client and opening a session with Homer at his workplace: "Hi Dad ..."
+    opcheck = `Opal.modules.hasOwnProperty(#{path})`
+    puts "autoloader: search_for_module: Opal internal check for #{path}: #{opcheck}"
+    return path if `Opal.modules.hasOwnProperty(#{path})`
     nil # Gee, I sure wish we had first_match ;-)
   end
 
