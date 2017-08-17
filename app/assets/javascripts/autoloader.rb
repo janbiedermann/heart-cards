@@ -8,6 +8,14 @@ class Autoloader
   end
   self.history = Set.new
 
+  def self.load_paths=(a)
+    @@load_paths = a
+  end
+  def self.load_paths
+    @@load_paths
+  end
+  self.load_paths = []
+
   def self.loaded=(a)
     @@loaded = a
   end
@@ -61,7 +69,7 @@ class Autoloader
 
     # to keep track of module and require
     require_or_load(from_mod, qualified_path)
-    return from_mod.const_get(const_name)
+    from_mod.const_get(const_name)
 
     # code from rails activesupport dependencies:
     # unless base_path = autoloadable_module?(path_suffix)
@@ -176,6 +184,12 @@ class Autoloader
     # oh my! imagine Bart Simpson, writing on the board:
     # "javascript is not ruby, javascript is not ruby, javascript is not ruby, ..."
     # then running home, starting irb, on the fly developing a chat client and opening a session with Homer at his workplace: "Hi Dad ..."
+    load_paths.each do |load_path|
+      mod_path = load_path + '/' + path
+      opcheck = `Opal.modules.hasOwnProperty(#{mod_path})`
+      puts "autoloader: search_for_module: Opal internal check for #{mod_path}: #{opcheck}"
+      return mod_path if `Opal.modules.hasOwnProperty(#{path})`
+    end
     opcheck = `Opal.modules.hasOwnProperty(#{path})`
     puts "autoloader: search_for_module: Opal internal check for #{path}: #{opcheck}"
     return path if `Opal.modules.hasOwnProperty(#{path})`
