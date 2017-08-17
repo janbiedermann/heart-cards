@@ -188,7 +188,7 @@ class Autoloader
       mod_path = load_path + '/' + path
       opcheck = `Opal.modules.hasOwnProperty(#{mod_path})`
       puts "autoloader: search_for_module: Opal internal check for #{mod_path}: #{opcheck}"
-      return mod_path if `Opal.modules.hasOwnProperty(#{path})`
+      return mod_path if `Opal.modules.hasOwnProperty(#{mod_path})`
     end
     opcheck = `Opal.modules.hasOwnProperty(#{path})`
     puts "autoloader: search_for_module: Opal internal check for #{path}: #{opcheck}"
